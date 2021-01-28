@@ -1,0 +1,715 @@
+---
+title: "Code 1"
+output: html_notebook
+---
+
+```{r}
+library(plyr)
+library(corrplot)
+library(gridExtra)
+library(ggthemes)
+library(caret)
+library(MASS)
+library(randomForest)
+library(party)
+
+
+```
+
+```{r}
+
+#unload
+
+detach(package : plyr)
+detach(package :corrplot)
+detach(package :gridExtra)
+detach(package :ggthemes)
+detach(package :caret)
+detach(package :MASS)
+detach(package :randomForest)
+detach(package :party)
+#load
+
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(mice)
+library(VIM)
+```
+
+
+#Initial dataset 
+
+```{r}
+names(final_suicide_data)
+main <- final_suicide_data%>%
+  select(-AID,-BIO.SEX, -AGE, )
+
+manlog <- glm(suicidal_thoughts~., family = binomial(link = "logit"), data = main)
+print(summary(manlog))
+a<- anova(manlog, test = "Chisq")
+summary(a)
+sum(a$Deviance, na.rm = TRUE)
+```
+
+
+
+#Initial regression for dimension reduction
+```{r}
+logModelinit <- glm(suicidal_thoughts~ suicidal_surrounding + poor_appetite_feel + shake_blues + depressed + failure+ not_worth_living + suicidal_surrounding + BIO.SEX + alcohol + cigarette + marijuana + pay_attention + feel_close_to_people +  headache + stomach_ache + physically_weak +poor_appetite + trouble_sleeping + moodiness+enjoy_life + inhalant , family = binomial(link = "logit"), data = final_suicide_data)
+print(summary(logModelinit))
+full_dev <- logModelinit$deviance
+12444
+anova_init <- anova(logModelinit, test = "Chisq")
+anova_init
+sum(anova_init$Deviance, na.rm = TRUE)
+
+```
+
+# final_data_to analyze
+
+```{r}
+my_data <- final_suicide_data %>% select(BIO.SEX,headache, stomach_ache, physically_weak, poor_appetite, trouble_sleeping, moodiness, pay_attention, feel_close_to_people, suicidal_surrounding, poor_appetite_feel, shake_blues, depressed, failure, enjoy_life, not_worth_living, alcohol, cigarette, marijuana, inhalant, suicidal_thoughts)
+```
+
+
+
+
+
+
+
+
+
+
+
+#Bar plots for categorical variables
+```{r}
+str(final_suicide_data)
+
+p1<- ggplot(final_suicide_data, aes(x = as.numeric(BIO.SEX))) + ggtitle("Biological Sex") +  scale_x_discrete(name = "", limits = c("Male", "Female"))+
+  geom_bar(aes(y = 100*stat(count)/sum(stat(count))), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+
+p2<- ggplot(final_suicide_data, aes(x = as.factor(AGE))) + ggtitle("Age") + xlab("Age")+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p3<- ggplot(final_suicide_data, aes(x = as.numeric(headache))) + ggtitle("Headache") + scale_x_discrete(name = "", limits = c("Never", "Just a few times", "about once a week", "almost everyday", "every day"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p4<- ggplot(final_suicide_data, aes(x = as.numeric(stomach_ache))) + ggtitle("Stomachache") + scale_x_discrete(name = "", limits = c("Never", "Just a few times", "about once a week", "almost everyday", "every day"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p5<- ggplot(final_suicide_data, aes(x = as.numeric(physically_weak))) + ggtitle("Physically Weak") + scale_x_discrete(name = "", limits = c("Never", "Just a few times", "about once a week", "almost everyday", "every day"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p6<- ggplot(final_suicide_data, aes(x = as.numeric(tired))) + ggtitle("Tired") + scale_x_discrete(name = "", limits = c("Never", "Just a few times", "about once a week", "almost everyday", "every day"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p7<- ggplot(final_suicide_data, aes(x = as.numeric(wake_up_tired))) + ggtitle("Waking up tired") + scale_x_discrete(name = "", limits = c("Never", "Just a few times", "about once a week", "almost everyday", "every day"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p8<- ggplot(final_suicide_data, aes(x = as.numeric(poor_appetite))) + ggtitle("Poor appetite") + scale_x_discrete(name = "", limits = c("Never", "Just a few times", "about once a week", "almost everyday", "every day"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p9<- ggplot(final_suicide_data, aes(x = as.numeric(trouble_sleeping))) + ggtitle("Trouble sleeping") + scale_x_discrete(name = "", limits = c("Never", "Just a few times", "about once a week", "almost everyday", "every day"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p10<- ggplot(final_suicide_data, aes(x = as.numeric(moodiness))) + ggtitle("Moodiness") + scale_x_discrete(name = "", limits = c("Never", "Just a few times", "about once a week", "almost everyday", "every day"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p11<- ggplot(final_suicide_data, aes(x = as.numeric(risk_seatbelt))) + ggtitle("Wear a seatbelt when riding") + scale_x_discrete(name = "", limits = c("Never", "rarely", "sometimes", "most of the time", "always"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p12<- ggplot(final_suicide_data, aes(x = as.numeric(risk_drunk_drive))) + ggtitle("Drive while drinking") + scale_x_discrete(name = "", limits = c("Never", "rarely", "sometimes", "most of the time", "always"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p13<- ggplot(final_suicide_data, aes(x = as.numeric(miss_school))) + ggtitle("Miss school because of health or emotional problem") + scale_x_discrete(name = "", limits = c("Never", "Just a few times", "about once a week", "almost everyday", "every day"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+
+p14<- ggplot(final_suicide_data, aes(x = as.numeric(repeat_grade))) + ggtitle("repeated a grade") + scale_x_discrete(name = "", limits = c("No", "Yes"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p15<- ggplot(final_suicide_data, aes(x = as.numeric(suspension))) + ggtitle("suspended") + scale_x_discrete(name = "", limits = c("No", "Yes"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p16<- ggplot(final_suicide_data, aes(x = as.numeric(expelled))) + ggtitle("expelled") + scale_x_discrete(name = "", limits = c("No", "Yes"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p17<- ggplot(final_suicide_data, aes(x = as.numeric(pay_attention))) + ggtitle("pay attention") + scale_x_discrete(name = "", limits = c("Never", "Just a few times", "about once a week", "almost everyday", "every day"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p18<- ggplot(final_suicide_data, aes(x = as.numeric(homework_done))) + ggtitle("homework done") + scale_x_discrete(name = "", limits = c("Never", "Just a few times", "about once a week", "almost everyday", "every day"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p19<- ggplot(final_suicide_data, aes(x = as.numeric(get_along_with_students))) + ggtitle("get along with students") + scale_x_discrete(name = "", limits = c("Strongly agree", "agree", "neither","disagree", "strongly disagree"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+
+p20<- ggplot(final_suicide_data, aes(x = as.numeric(feel_close_to_people))) + ggtitle("feel close to people") + scale_x_discrete(name = "", limits = c("Strongly agree", "agree", "neither","disagree", "strongly disagree"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+
+p21<- ggplot(final_suicide_data, aes(x = as.numeric(feel_part_of_your_school))) + ggtitle("feel part of the school") + scale_x_discrete(name = "", limits = c("Strongly agree", "agree", "neither","disagree", "strongly disagree"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p22<- ggplot(final_suicide_data, aes(x = as.numeric(suicidal_thoughts))) + ggtitle("Suicidal thoughts") + scale_x_discrete(name = "", limits = c("No", "Yes"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p23<- ggplot(final_suicide_data, aes(x = as.numeric(suicidal_surrounding))) + ggtitle("Suicidal surrounding") + scale_x_discrete(name = "", limits = c("No", "Yes"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p24<- ggplot(final_suicide_data, aes(x = as.numeric(poor_appetite_feel))) + ggtitle("feel like having poor appetite") + scale_x_discrete(name = "", limits = c("Never or rarely", "sometimes", "a lot of the time", "most of the time or all the time"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p25<- ggplot(final_suicide_data, aes(x = as.numeric(shake_blues))) + ggtitle("feel like you could not shake off the blues") + scale_x_discrete(name = "", limits = c("Never or rarely", "sometimes", "a lot of the time", "most of the time or all the time"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p26<- ggplot(final_suicide_data, aes(x = as.numeric(depressed ))) + ggtitle("felt depressed") + scale_x_discrete(name = "", limits = c("Never or rarely", "sometimes", "a lot of the time", "most of the time or all the time"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p27<- ggplot(final_suicide_data, aes(x = as.numeric(failure ))) + ggtitle("life had been a failure") + scale_x_discrete(name = "", limits = c("Never or rarely", "sometimes", "a lot of the time", "most of the time or all the time"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p28<- ggplot(final_suicide_data, aes(x = as.numeric(Happy ))) + ggtitle("were happy") + scale_x_discrete(name = "", limits = c("Never or rarely", "sometimes", "a lot of the time", "most of the time or all the time"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p29<- ggplot(final_suicide_data, aes(x = as.numeric(lonely ))) + ggtitle("felt lonely") + scale_x_discrete(name = "", limits = c("Never or rarely", "sometimes", "a lot of the time", "most of the time or all the time"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p30<- ggplot(final_suicide_data, aes(x = as.numeric(enjoy_life  ))) + ggtitle("enjoyed life") + scale_x_discrete(name = "", limits = c("Never or rarely", "sometimes", "a lot of the time", "most of the time or all the time"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p31<- ggplot(final_suicide_data, aes(x = as.numeric(sad ))) + ggtitle("felt sad") + scale_x_discrete(name = "", limits = c("Never or rarely", "sometimes", "a lot of the time", "most of the time or all the time"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p32<- ggplot(final_suicide_data, aes(x =as.numeric(not_worth_living))) + ggtitle("felt life was not worth living") + scale_x_discrete(name = "", limits = c("Never or rarely", "sometimes", "a lot of the time", "most of the time or all the time"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+
+p33<- ggplot(final_suicide_data, aes(x = as.numeric(alcohol))) + ggtitle("Alcohol") + scale_x_discrete(name = "", limits = c("No", "Yes"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p34<- ggplot(final_suicide_data, aes(x = as.numeric(cigarette))) + ggtitle("Cigarette") + scale_x_discrete(name = "", limits = c("No", "Yes"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p35<- ggplot(final_suicide_data, aes(x = as.numeric(marijuana))) + ggtitle("Marijuana") + scale_x_discrete(name = "", limits = c("No", "Yes"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p36<- ggplot(final_suicide_data, aes(x = as.numeric(cocaine))) + ggtitle("Cocaine") + scale_x_discrete(name = "", limits = c("No", "Yes"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p37<- ggplot(final_suicide_data, aes(x = as.numeric(inhalant))) + ggtitle("Inhalant") + scale_x_discrete(name = "", limits = c("No", "Yes"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p38<- ggplot(final_suicide_data, aes(x = as.numeric(illegal_drug)))+ ggtitle("Illegal drug") + scale_x_discrete(name = "", limits = c("No", "Yes"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_minimal()
+
+p39<- ggplot(final_suicide_data, aes(x = as.numeric(night_away))) + ggtitle("Night away without permission") + scale_x_discrete(name = "", limits = c("No", "Yes"))+
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), width = 0.5) + ylab("Percentage") + coord_flip() + theme_linedraw()
+
+map
+
+
+
+grid.arrange(p1, p2, p22, p23, ncol = 2)
+grid.arrange( p3, p4, p5, p6,p7, ncol =2)
+grid.arrange(p8, p9, p10,p13, ncol = 2) 
+grid.arrange(p11, p12, p39, ncol = 2)
+grid.arrange(p14, p15, p16, p17, p18, ncol = 2)
+grid.arrange(p19, p20, p21, ncol = 2)
+grid.arrange(p24, p25, p26, p27, p28, p29, ncol = 2)
+grid.arrange(p30, p31, p32, ncol = 2)
+grid.arrange(p33, p34, p35, p36, p37, p38, ncol = 2)
+
+
+N = nrow(training)
+dim(training);dim(testing)
+
+```
+
+
+
+#Start splitting data for k-fold crossvalidation
+
+```{r}
+set.seed(78)
+intrain <- createDataPartition(my_data$suicidal_thoughts, times = 1, p = .7, list = FALSE)
+training <- my_data[intrain,]
+testing <- my_data[-intrain,]
+
+```
+
+#logistic regression
+```{r}
+my_log_model <- glm(suicidal_thoughts ~ .,family = binomial(link = "logit"), data = training)
+
+
+fitted_results <- predict(my_log_model, newdata = testing, type = 'response')
+fitted_results <- as.matrix(fitted_results)
+fitted_results <- ifelse(fitted_results>0.5, 1,0)
+error <- mean(fitted_results == testing$suicidal_thoughts, na.rm = TRUE)
+print(paste('Logistic Regression Accuracy', error))
+
+fitted_table <- as.factor(fitted_results)
+confusionMatrix(fitted_table, testing$suicidal_thoughts)
+
+                          
+```
+```{r}
+print("Confusion Matrix for Logistic regression");table(testing$suicidal_thoughts, fitted_results>0.5)
+
+True_negative2 <- 5208
+True_Positive2<-  216
+False_negative2<-  608
+False_positive2<-  117
+Actual_true2 <- 824
+Actual_false2 <- 5806
+predicted_true2 <- 333
+Accuracy2 <- round((True_Positive2+True_negative2)/6149, digits = 2)
+print(paste('Overall, the predictions are correct', Accuracy2*100,"% of time" ))
+error_rate2 <- round((False_negative2 + False_positive2)/6149, digits =2)
+print(paste('Overall, the predictions are wrong', error_rate2*100,"% of time" ))
+True_positive_rate2 <- round(True_Positive2/Actual_true2, digits = 2)
+print(paste('When students actually had suicidal thoughts, it predicts them correctly', True_positive_rate2*100,"% of time" ))
+False_positive_rate2 <- round(False_positive2/Actual_false2, digits = 2)
+print(paste('When students did not actually have suicidal thoughts, it predicts  they did', False_positive_rate2*100,"% of time" ))
+True_negative_rate2<- round(True_negative2/Actual_false2, digits = 2)#sensitivity
+print(paste('When students did not actually have suicidal thoughts, it predicts they did not', True_negative_rate2*100,"% of time" ))
+precision2 <- round(True_Positive2/predicted_true2,digits =2)#specificity 
+print(paste('When the model predicts suicidal thoughts, it is correct', precision2*100,"% of time" ))
+
+
+```
+
+
+#random forest and confusion matrix
+```{r}
+rfModel <- randomForest(suicidal_thoughts ~ . , data = training)
+
+
+pred_Rf <- predict(rfModel, testing)
+confusionMatrix(pred_Rf, testing$suicidal_thoughts)
+errorrf <- mean(pred_Rf == testing$suicidal_thoughts, na.rm = TRUE)
+print(paste('decision tree Accuracy', errorrf))
+plot(rfModel, xaxt = "n")
+axis(1, at = seq(0, 500, by = 10),las = 2)
+abline(v=60, col = "blue")
+
+plot(rfModel)
+lines(x=60, col = "red")
+num_tree <- 60
+rfModel <- randomForest(suicidal_thoughts ~ . , data = training, ntree = 60, mtry = sqrt(20))
+
+pred_Rf1 <- predict(rfModel, testing)
+confusionMatrix(pred_Rf1, testing$suicidal_thoughts)
+errorrf1 <- mean(pred_Rf1 == testing$suicidal_thoughts, na.rm = TRUE)
+print(paste('random tree Accuracy', errorrf1))
+
+True_negative2 <- 5211
+True_Positive2<-  184
+False_negative2<-  114
+False_positive2<-  117
+Actual_true2 <- 824
+Actual_false2 <- 5806
+predicted_true2 <- 333
+Accuracy2 <- round((True_Positive2+True_negative2)/6149, digits = 2)
+print(paste('Overall, the predictions are correct', Accuracy2*100,"% of time" ))
+error_rate2 <- round((False_negative2 + False_positive2)/6149, digits =2)
+print(paste('Overall, the predictions are wrong', error_rate2*100,"% of time" ))
+True_positive_rate2 <- round(True_Positive2/Actual_true2, digits = 2)
+print(paste('When students actually had suicidal thoughts, it predicts them correctly', True_positive_rate2*100,"% of time" ))
+False_positive_rate2 <- round(False_positive2/Actual_false2, digits = 2)
+print(paste('When students did not actually have suicidal thoughts, it predicts  they did', False_positive_rate2*100,"% of time" ))
+True_negative_rate2<- round(True_negative2/Actual_false2, digits = 2)#sensitivity
+print(paste('When students did not actually have suicidal thoughts, it predicts they did not', True_negative_rate2*100,"% of time" ))
+precision2 <- round(True_Positive2/predicted_true2,digits =2)#specificity 
+print(paste('When the model predicts suicidal thoughts, it is correct', precision2*100,"% of time" ))
+
+```
+```{r}
+
+plot(rfModel)
+```
+
+```{r}
+library(class)
+library(dplyr)
+library(e1071)
+library(FNN)
+library(gmodels)
+library(psych)
+library(caret)
+```
+
+
+#knn and confusion matrix
+```{r}
+
+#create feature and target training/test sets
+features_train <- my_data[intrain, !(names(my_data) %in% c('suicidal_thoughts'))]
+features_test <- my_data[-intrain, !(names(my_data) %in% c('suicidal_thoughts'))]
+target_train <- my_data[intrain, "suicidal_thoughts"]
+target_test <- my_data[-intrain, "suicidal_thoughts"]
+
+#process each new set
+ 
+preprocess_object <- preProcess(features_train, method = c('scale', 'center', 'knnImpute'))
+features_train <- predict(preprocess_object, features_train)
+features_test <- predict(preprocess_object, features_test)
+
+#fit the model
+
+knn_fit <- knn3(features_train, target_train, k = 120)
+knn_pred <- predict(knn_fit, features_test, type = 'class')
+
+#Calculate error
+
+#error_knn <- mean(ifelse(target_test != knn_pred, 1, 0))
+
+error_knn <- mean(target_test == knn_pred)
+print(paste('knn classification Accuracy', error_knn))
+
+confusionMatrix(knn_pred, target_test)
+
+         
+
+```
+
+#decision tree using ctree and confusion matrix
+
+```{r}
+dtreeci <- ctree(suicidal_thoughts ~ . , data = training)
+
+pred_tree <- predict(dtreeci, testing)
+p1<- predict(dtreeci, training)
+
+tab1 <- table(Predicted = p1, Actual = training$suicidal_thoughts)
+tab2 <- table(Predicted = pred_tree, Actual = testing$suicidal_thoughts)
+
+errordt <- mean(pred_tree == testing$suicidal_thoughts, na.rm = TRUE)
+#print(paste('decision tree Accuracy', sum(diag(tab2))/sum(tab2)))
+print(paste('decision tree Accuracy', errordt))
+tab1
+plot(dtreeci)
+
+```
+
+#decision tree using rpart and confusion matrix
+
+```{r}
+library(rpart)
+library(rpart.plot)
+trad_dtree <- rpart(suicidal_thoughts~., data = training, method = "class")
+p <- predict(trad_dtree, testing, type = "class")
+errordt_trad <- mean(p == testing$suicidal_thoughts, na.rm = TRUE)
+print(paste('decision tree Accuracy', errordt_trad))
+
+rpart.plot(trad_dtree, type = 4, box.palette = c("red","green"), fallen.leaves = TRUE)
+
+plotcp(trad_dtree)
+printcp(trad_dtree)
+
+pruned <- prune(trad_dtree, cp = 0.01)
+rpart.plot(pruned, type = 4, box.palette = c("red","green"), fallen.leaves = TRUE)
+printcp(pruned)
+
+p1 <- predict(pruned, testing, type = "class")
+errordt_pruned <- mean(p1 == testing$suicidal_thoughts, na.rm = TRUE)
+print(paste('decision tree Accuracy', errordt_pruned))
+
+confusionMatrix(p1, testing$suicidal_thoughts)
+
+```
+
+
+
+#k-fold cross validation for knn
+```{r}
+accuracy_calc <- function(split_pro, folds, kn) {
+
+  split_index <- createDataPartition(my_data$suicidal_thoughts, times = folds, p = split_pro, list = FALSE) 
+  
+  accuracy_df <- data.frame(matrix(ncol = 2, nrow = ncol(split_index)))
+  colnames(accuracy_df) <- c('test_error', 'fold')
+  
+  for(i in 1:nrow(accuracy_df)){
+
+    #create feature and target training/test sets
+features_train <- my_data[split_index[,i], !(names(my_data) %in% c('suicidal_thoughts'))]
+features_test <- my_data[-split_index[,i], !(names(my_data) %in% c('suicidal_thoughts'))]
+target_train <- my_data[split_index[,i], "suicidal_thoughts"]
+target_test <- my_data[-split_index[,i], "suicidal_thoughts"]
+
+#process each new set
+
+preprocess_object <- preProcess(features_train, method = c('scale', 'center', 'knnImpute'))
+features_train <- predict(preprocess_object, features_train)
+features_test <- predict(preprocess_object, features_test)
+
+#fit the model
+
+knn_fit <- knn3(features_train, target_train, k = kn)
+knn_pred <- predict(knn_fit, features_test, type = 'class')
+
+#Calculate error
+
+accuracy_knn <- mean(target_test == knn_pred)
+accuracy_df[i, 'test_error'] <- accuracy_knn
+accuracy_df[i,'fold']<- i
+  }
+  print(mean(accuracy_df$test_error))
+  return(accuracy_df)
+}
+
+kn_120 <- accuracy_calc(.7, 10, 120)
+
+
+
+```
+
+#k-fold cross validation for logistic
+```{r}
+
+accuracy_log_calc <- function(split_pro, folds) {
+
+  split_index <- createDataPartition(my_data$suicidal_thoughts, times = folds, p = split_pro, list = FALSE) 
+  
+  accuracy_df <- data.frame(matrix(ncol = 2, nrow = ncol(split_index)))
+  colnames(accuracy_df) <- c('test_error', 'fold')
+  
+  for(i in 1:nrow(accuracy_df)){
+
+    #create feature and target training/test sets
+training <- my_data[split_index[,i],]
+testing <- my_data[-split_index[,i],]
+
+
+#fit the model
+
+my_log_model <- glm(suicidal_thoughts ~ .,family = binomial(link = "logit"), data = training)
+
+fitted_results <- predict(my_log_model, newdata = testing, type = 'response')
+fitted_results <- as.matrix(fitted_results)
+fitted_results <- ifelse(fitted_results>0.5, 1,0)
+
+#Calculate error
+accuracy_log <- mean(fitted_results == testing$suicidal_thoughts, na.rm = TRUE)
+accuracy_df[i, 'test_error'] <- accuracy_log
+accuracy_df[i,'fold']<- i
+  }
+  print(mean(accuracy_df$test_error))
+  return(accuracy_df)
+  
+ 
+}
+
+lg<- accuracy_log_calc(.7, 10)
+
+
+```
+# k fold cross validation rpart decision tree
+```{r}
+
+accuracy_dtree_calc <- function(split_pro, folds) {
+
+  split_index <- createDataPartition(my_data$suicidal_thoughts, times = folds, p = split_pro, list = FALSE) 
+  
+  accuracy_df <- data.frame(matrix(ncol = 2, nrow = ncol(split_index)))
+  colnames(accuracy_df) <- c('test_error', 'fold')
+  
+  for(i in 1:nrow(accuracy_df)){
+
+    #create feature and target training/test sets
+training <- my_data[split_index[,i],]
+testing <- my_data[-split_index[,i],]
+
+
+#fit the model
+
+trad_dtree <- rpart(suicidal_thoughts~., data = training, method = "class")
+pruned <- prune(trad_dtree, cp = 0.01)
+
+
+fitted_results <- predict(pruned, testing, type = "class")
+
+
+#Calculate error
+accuracy_dtree <- mean(fitted_results == testing$suicidal_thoughts, na.rm = TRUE)
+accuracy_df[i, 'test_error'] <- accuracy_dtree
+accuracy_df[i,'fold']<- i
+  }
+  print(mean(accuracy_df$test_error))
+  return(accuracy_df)
+ 
+}
+dt <- accuracy_dtree_calc(.7, 10)
+
+```
+
+
+# k fold cross validation random forest and accuracy rate
+```{r}
+accuracy_rforest_calc <- function(split_pro, folds) {
+
+  split_index <- createDataPartition(my_data$suicidal_thoughts, times = folds, p = split_pro, list = FALSE) 
+  
+  accuracy_df <- data.frame(matrix(ncol = 2, nrow = ncol(split_index)))
+  colnames(accuracy_df) <- c('test_error', 'fold')
+  
+  for(i in 1:nrow(accuracy_df)){
+
+    #create feature and target training/test sets
+training <- my_data[split_index[,i],]
+testing <- my_data[-split_index[,i],]
+
+
+#fit the model
+
+rfModel <- randomForest(suicidal_thoughts ~ . , data = training, ntree = 60, mtry = sqrt
+                        (20), na.action = na.roughfix)
+
+
+fitted_results <- predict(rfModel, testing)
+
+
+
+#Calculate error
+accuracy_rforest <- mean(fitted_results == testing$suicidal_thoughts, na.rm = TRUE)
+accuracy_df[i, 'test_error'] <- accuracy_rforest
+accuracy_df[i,'fold']<- i
+  }
+  print(mean(accuracy_df$test_error))
+  return(accuracy_df)
+  
+ 
+}
+rf<- accuracy_rforest_calc(.7, 10)
+```
+
+#accuracy rate for other algorithm  
+```{r}
+bknn <- accuracy_calc(.7, 100, 120)
+
+
+bdt<- accuracy_dtree_calc(.7,100)
+
+blg <- accuracy_log_calc(.7,100)
+
+brf <- accuracy_rforest_calc(.7, 100)
+
+```
+
+```{r}
+cknn <- accuracy_calc(.9, 100, 120)
+
+
+cdt<- accuracy_dtree_calc(.9,100)
+
+clg <- accuracy_log_calc(.9,100)
+
+crf <- accuracy_rforest_calc(.9, 100)
+```
+
+```{r}
+dknn <- accuracy_calc(.5, 100, 120)
+
+ddt<- accuracy_dtree_calc(.5,100)
+
+dlg <- accuracy_log_calc(.5,100)
+
+drf <- accuracy_rforest_calc(.5, 100)
+
+```
+
+#Visualization
+```{r}
+
+ten_fold_graph <- ggplot(kn_120, 
+       aes(x = fold, y = test_error, color = "knn")) + 
+  geom_line()+
+  xlab("Fold") + ylab("Accuracy rate") + ggtitle("Accuracy rate VS 10 Fold accross different models at 70% split")+
+  geom_line(aes(x = lg$fold, y = lg$test_error,color = 'logistic regression'))+
+  geom_line(aes(x = dt$fold, y = dt$test_error, color = 'decision tree'))+
+  geom_line(aes(x = rf$fold, y = rf$test_error, color = 'random forest'))+
+    scale_colour_manual("", values = c("logistic regression" = "blue","random forest"="black","decision tree" = "green", "knn" = "red"))
+hun_fold_graph<- ggplot(bknn, 
+       aes(x = fold, y = test_error, color = "knn")) + 
+  geom_line()+
+  xlab("Fold") + ylab("Accuracy rate") + ggtitle("Accuracy rate VS 100 Fold accross different models at 70%")+
+  geom_line(aes(x = blg$fold, y = blg$test_error,color = 'logistic regression'))+
+  geom_line(aes(x = bdt$fold, y = bdt$test_error, color = 'decision tree'))+
+  geom_line(aes(x = brf$fold, y = brf$test_error, color = 'random forest'))+
+    scale_colour_manual("", values = c("logistic regression" = "blue","random forest"="black","decision tree" = "green", "knn" = "red"))
+
+lar_prop_graph<- ggplot(cknn, 
+       aes(x = fold, y = test_error, color = "knn")) + 
+  geom_line()+
+  xlab("Fold") + ylab("Accuracy rate") + ggtitle("Accuracy rate VS 100 Fold accross different models at 90% split")+
+  geom_line(aes(x = clg$fold, y = clg$test_error,color = 'logistic regression'))+
+  geom_line(aes(x = cdt$fold, y = cdt$test_error, color = 'decision tree'))+
+  geom_line(aes(x = crf$fold, y = crf$test_error, color = 'random forest'))+
+    scale_colour_manual("", values = c("logistic regression" = "blue","random forest"="black","decision tree" = "green", "knn" = "red"))
+
+mid_prop_graph<- ggplot(cknn, 
+       aes(x = fold, y = test_error, color = "knn")) + 
+  geom_line()+
+  xlab("Fold") + ylab("Accuracy rate") + ggtitle("Accuracy rate VS 100 Fold accross different models at 50% split")+
+  geom_line(aes(x = dlg$fold, y = dlg$test_error,color = 'logistic regression'))+
+  geom_line(aes(x = ddt$fold, y = ddt$test_error, color = 'decision tree'))+
+  geom_line(aes(x = drf$fold, y = drf$test_error, color = 'random forest'))+
+    scale_colour_manual("", values = c("logistic regression" = "blue","random forest"="black","decision tree" = "green", "knn" = "red"))
+
+mid_prop_graph
+lar_prop_graph
+hun_fold_graph 
+ten_fold_graph
+
+
+```
+
+
+#ndi data #not used 
+
+```{r}
+death_cause <- ndi%>%
+  select(AID, NDICOD07)%>%
+  na_if(8)%>%na_if(9)%>%drop_na()
+
+death_cause<-death_cause%>%
+  mutate(suicide = as.factor(ifelse(death_cause$NDICOD07==2,1,0 )))%>%
+  select(-NDICOD07)
+         
+
+table(death_cause$suicide)
+
+suicide_data <- left_join(death_cause, final_suicide_data, by = "AID")
+suicide_data <- suicide_data%>%
+  select( suicide,BIO.SEX,headache, stomach_ache, physically_weak, poor_appetite, trouble_sleeping, moodiness, pay_attention, feel_close_to_people, suicidal_surrounding, poor_appetite_feel, shake_blues, depressed, failure, enjoy_life, not_worth_living, alcohol, cigarette, marijuana, inhalant, suicidal_thoughts)
+
+
+set.seed(78)
+intrain1 <- createDataPartition(suicide_data$suicide, times = 1, p = .7, list = FALSE)
+training1 <-suicide_data[intrain1,]
+testing1 <- suicide_data[-intrain1,]
+
+
+dim(training1);dim(testing1)
+my_log_model1 <- glm(suicide ~ suicidal_surrounding + suicidal_thoughts,family = binomial(link = "logit"), data = training1)
+
+
+
+print(summary(my_log_model1))
+an5 <- anova(my_log_model1, test = "Chisq")
+sum(an4$Deviance, na.rm = TRUE)
+
+fitted_results2 <- predict(my_log_model1, newdata = testing1, type = 'response')
+fitted_results <- as.matrix(fitted_results)
+fitted_results <- ifelse(fitted_results>0.5, 1,0)
+error <- mean(fitted_results == testing$suicidal_thoughts, na.rm = TRUE)
+print(paste('Logistic Regression Accuracy', error))
+
+```

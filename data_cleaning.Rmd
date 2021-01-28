@@ -1,0 +1,307 @@
+---
+title: "Data cleaning"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+#unload
+
+detach(package : plyr)
+detach(package :corrplot)
+detach(package :gridExtra)
+detach(package :ggthemes)
+detach(package :caret)
+detach(package :MASS)
+detach(package :randomForest)
+detach(package :party)
+#load
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(mice)
+library(VIM)
+```
+
+#Retrieving all the variable to be used for hypothesis 1
+```{r}
+general_info <- allwave1%>%
+  select(AID, IYEAR,H1GI1Y, BIO.SEX)%>%
+  na_if(6)%>%na_if(8)%>%na_if(96)%>%
+  mutate(AGE = IYEAR-H1GI1Y)%>%
+  select(AID, BIO.SEX, AGE)
+```
+  
+```{r}
+#a data frame that contains ordered categorical variables that describe physical health 
+
+head_stomach_tired_sleep <- allwave1 %>%
+  select(AID, H1GH2, H1GH4,H1GH6, H1GH8,H1GH11, H1GH17, H1GH18,H1GH20, H1GH42, H1GH43, H1GH48)%>%
+  na_if(6)%>%na_if(8)%>%na_if(9)
+
+# there are 422/20.000 missing values in the data frame 
+md.pattern(head_stomach_tired_sleep) 
+
+
+#turning each variables into factors
+head_stomach_tired_sleep <- head_stomach_tired_sleep%>%
+  mutate(headache = as.factor(H1GH2),
+         stomach_ache = as.factor(H1GH4),
+         physically_weak = as.factor(H1GH6),
+         tired = as.factor(H1GH8),
+         wake_up_tired = as.factor(H1GH11),
+         trouble_sleeping = as.factor(H1GH18),
+         moodiness = as.factor(H1GH20),
+         poor_appetite = as.factor(H1GH17),
+         risk_seatbelt = as.factor(H1GH42),
+         risk_drunk_drive = as.factor(H1GH43),
+         poor_appetite = as.factor(H1GH17),
+         miss_school = as.factor(H1GH48))%>%
+  select(AID, headache, stomach_ache, physically_weak, tired, wake_up_tired, trouble_sleeping, moodiness, poor_appetite, miss_school, risk_seatbelt, risk_drunk_drive)
+
+#impute missing data
+tempData_hsts <- mice(head_stomach_tired_sleep, m =5, maxit = 5, method = "polr", seed = 500)
+summary(tempData_hsts)
+
+#completed data
+completed_data_hsts <- complete(tempData_hsts,1)
+md.pattern(completed_data_hsts)
+
+  
+
+```
+
+```{r}
+#behaviour at school
+#repeated a grade
+#suspension
+#expelled
+school_behav <-allwave1%>%
+  select(AID, H1ED5, H1ED7,H1ED9)%>%
+    na_if(6)%>%na_if(8)
+
+#turn into factors
+
+school_behav <- school_behav %>%
+    mutate(repeat_grade = as.factor(H1ED5), suspension = as.factor(H1ED7), expelled = as.factor(H1ED9))%>%
+  select(AID, repeat_grade, suspension, expelled)
+
+#pattern of missing data
+md.pattern(school_behav )
+
+# imputing missing data
+tempData_sb <- mice(school_behav, m =5, maxit = 5, method = "logreg.boot", seed = 500)
+completed_sb <- complete(tempData_sb,1)
+md.pattern(completed_sb)
+
+```
+
+```{r}
+
+school_attention <- allwave1%>%
+  select(AID,H1ED16, H1ED17)%>%
+  na_if(6) %>% na_if(7) %>% na_if(8)
+
+#turn into factors
+
+school_attention <- school_attention %>%
+    mutate(pay_attention = as.factor(H1ED16), homework_done = as.factor(H1ED17))%>%
+  select(AID, pay_attention, homework_done)
+
+#pattern of missing data
+md.pattern(school_attention)
+
+# imputing missing data
+tempData_sa <- mice(school_attention, m =5, maxit = 5, method = "polr", seed = 500)
+completed_sa <- complete(tempData_sa,1)
+
+
+md.pattern(completed_sa)
+
+```
+
+```{r}
+
+#Getting along with students, feeling close to students, feeling part of the school.
+
+School_Relationship <- allwave1%>%
+  select(AID,H1ED18, H1ED19, H1ED20 )%>%
+  na_if(6)%>%na_if(7)%>%na_if(8)
+
+#turn into factors
+
+School_Relationship <- School_Relationship%>%
+  mutate(get_along_with_students = as.factor(H1ED18), 
+         feel_close_to_people = as.factor(H1ED19),
+         feel_part_of_your_school = as.factor(H1ED20))%>%
+  select(AID, get_along_with_students, feel_close_to_people, feel_part_of_your_school )
+
+
+#pattern of missing data
+md.pattern(School_Relationship)
+
+# imputing missing data
+tempData_sr <- mice(School_Relationship, m =5, maxit = 5, method = "polr", seed = 500)
+completed_sr <- complete(tempData_sr,1)
+
+
+md.pattern(completed_sr)
+
+```
+
+```{r}
+
+#binary # thought about committing suicide
+suicidal_thoughts <- allwave1%>%
+  select(AID, H1SU1)%>%
+  na_if(6)%>%na_if(8)%>%na_if(9)%>%
+  mutate(suicidal_thoughts = as.factor(H1SU1))%>%
+  select(AID, suicidal_thoughts)
+
+md.pattern(suicidal_thoughts) # 240/20000 missing
+
+ #binary # friends tried to kill themselves # family tried to kill themselves
+suicidal_surrounding <- allwave1%>%
+  select(AID, H1SU4)%>%
+  na_if(6)%>%na_if(8)%>%na_if(9)%>%
+  mutate(suicidal_surrounding = as.factor(H1SU4))%>%
+  select(AID, suicidal_surrounding)
+hist(as.numeric(suicidal_surrounding$suicidal_surrounding))
+
+md.pattern(suicidal_surrounding) # 547/20 000 missing
+
+mode <- val[which.max(tabulate(match(suicidal_surrounding$suicidal_surrounding, val)))]
+suicidal_surrounding$suicidal_surrounding[is.na(suicidal_surrounding$suicidal_surrounding)] <- 0
+
+mode <- as.data.frame(mode)
+table(suicidal_surrounding$suicidal_surrounding)
+md.pattern(suicidal_surrounding)
+
+```
+
+
+#Feeling data 
+
+```{r}
+feeling <- allwave1%>%
+  select(AID, H1FS2, H1FS3,H1FS6, H1FS9, H1FS11, H1FS13, H1FS15, H1FS16, H1FS19)%>%
+  na_if(6)%>%na_if(8)%>%
+  mutate(shake_blues = as.factor(H1FS3),
+         depressed = as.factor(H1FS6),
+         failure = as.factor(H1FS9),
+         Happy = as.factor(H1FS11),
+         lonely = as.factor(H1FS13),
+         enjoy_life = as.factor(H1FS15),
+         sad = as.factor(H1FS16),
+         not_worth_living = as.factor(H1FS19),
+         poor_appetite_feel = as.factor(H1FS2))%>%
+  select(AID, shake_blues, depressed, failure, Happy,lonely, enjoy_life, sad, not_worth_living, poor_appetite_feel)
+
+md.pattern(feeling)
+
+tempData_feeling <- mice(feeling, m =5, maxit = 5, method = "polr", seed = 500)
+
+summary(tempData_feeling)
+
+completed_feeling <- complete(tempData_feeling,1)
+
+
+
+
+md.pattern(completed_feeling)
+
+
+
+
+
+
+```
+
+```{r}
+
+
+#Alcohol and drug use (Aug 13th)
+
+
+Alcohol_cigarettes <- allwave1%>%
+  select(AID, H1TO1, H1TO12)%>%
+  na_if(6)%>% na_if(8)%>%na_if(9)%>%
+  mutate(alcohol = as.factor(H1TO1),
+         cigarette = as.factor(H1TO12))%>%
+  select(AID, alcohol, cigarette)
+  
+  
+  
+
+drug <- allwave1%>%
+  select(AID, H1TO30, H1TO34, H1TO37, H1TO40, H1GH53)%>%
+  na_if(96)%>%na_if(98)%>%na_if(99)%>%na_if(6)%>%na_if(8)%>%na_if(9)%>%
+  mutate(marijuana = as.factor(ifelse(drug$H1TO30==0,0,1 )),
+         cocaine = as.factor(ifelse(drug$H1TO34==0,0,1 )),
+         inhalant = as.factor(ifelse(drug$H1TO37==0,0,1 )),
+         illegal_drug = as.factor(ifelse(drug$H1TO40==0,0,1 )),
+         night_away = as.factor(H1GH53))%>%
+  select(AID, marijuana, cocaine, inhalant, illegal_drug, night_away)
+         
+
+
+
+substance_data <- inner_join(Alcohol_cigarettes, drug, by = "AID")
+
+md.pattern(substance_data)
+
+
+
+
+#impute missing data
+tempData_substance <- mice(substance_data, m =5, maxit = 5, method = "logreg.boot", seed = 500)
+summary(tempData_substance)
+
+completed_data_substance <- complete(tempData_substance,1)
+
+md.pattern(completed_data_substance)
+
+
+```
+
+#Merging data
+```{r}
+
+new_vars <- inner_join(completed_feeling, completed_data_substance, by = "AID")
+```
+
+```{r}
+A <- inner_join(completed_data_hsts, completed_sb, by = "AID")
+B<- inner_join(completed_sa, completed_sr, by = "AID")
+C<- inner_join(A, B, by = "AID")
+
+D <- inner_join(C, suicidal_thoughts, by = "AID")
+suicide_data <- inner_join(D, general_info, by = "AID")
+suicide_data <- inner_join(suicide_data, new_vars,  by = "AID")
+suicide_data <- inner_join(suicide_data, suicidal_surrounding,  by = "AID")
+
+
+final_suicide_data <- suicide_data%>%
+  filter(!is.na(suicidal_thoughts))%>%
+  mutate(BIO.SEX = as.factor(BIO.SEX))
+  
+
+#data to predict 
+to_predict<- suicide_data%>%
+  filter(is.na(suicidal_thoughts))
+```
+
+```{r}
+
+
+save(ndi,allwave1, final_suicide_data,to_predict, file = "summer_2020_workspace.RData" )
+
+
+```

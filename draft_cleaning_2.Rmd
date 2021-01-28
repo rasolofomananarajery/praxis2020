@@ -1,0 +1,462 @@
+---
+title: "draft"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#grades in 1994-1995 school year 
+School_perf1 <- allwave1%>%
+  select(AID, H1ED11, H1ED12, H1ED13, H1ED14)%>%
+  filter( H1ED11!= 99 ,H1ED11!= 5, H1ED11!= 6)%>%
+  filter( H1ED12!= 99 ,H1ED12!= 5, H1ED12!= 6)%>%
+  filter( H1ED13!= 99 ,H1ED13!= 5, H1ED13!= 6)%>%
+  filter( H1ED14!= 99 ,H1ED14!= 5, H1ED14!= 6)%>%
+    na_if(96)%>%na_if(97)%>%na_if(98)
+
+#pattern of missing data
+md.pattern(School_perf1)
+
+#number of missing data
+sapply(School_perf1, function(x) sum(is.na(x))) # 10 percent of the data is missing
+
+#transform into factor
+School_perf1 <- School_perf1 %>%
+  mutate( H1ED11 = as.factor(H1ED11),
+          H1ED12 = as.factor(H1ED12),
+          H1ED13 = as.factor(H1ED13),
+          H1ED14 = as.factor(H1ED14)
+          )
+#impute missing data
+tempData <- mice(School_perf1, m =5, maxit = 5, method = "polr", seed = 500)
+summary(tempData)
+
+#completed data
+completed_data <- complete(tempData,1)
+md.pattern(completed_data)
+
+```
+
+
+```{r}
+
+#grades in 1996 school  year
+School_perf2 <- allwave2%>%
+  select(AID, H2ED7, H2ED8, H2ED9, H2ED10)%>%
+  filter(H2ED7!= 5, H2ED7!= 6)%>%
+  filter( H2ED8 != 5, H2ED8!= 6)%>%
+  filter( H2ED9 != 5, H2ED9 != 6)%>%
+  filter( H2ED10 != 5, H2ED10 != 6)%>%
+    na_if(96)%>%na_if(97)%>%na_if(98)
+
+#pattern of missing data
+md.pattern(School_perf2)
+
+#number of missing data
+sapply(School_perf2, function(x) sum(is.na(x)))
+
+#transform into factor
+School_perf2 <- School_perf2 %>%
+  mutate( H2ED7 = as.factor(H2ED7),
+          H2ED8 = as.factor(H2ED8),
+          H2ED9 = as.factor(H2ED9),
+          H2ED10 = as.factor(H2ED10)
+          )
+#impute missing data
+tempData2 <- mice(School_perf2, m =5, maxit = 5, method = "polr", seed = 500)
+summary(tempData2)
+
+#completed data
+completed_data2 <- complete(tempData2,1)
+md.pattern(completed_data2)
+
+nrow(School_perf1) #15942
+nrow(School_perf2) # 10663
+
+
+```
+
+```{r}
+#Drop in performance
+#GET AID of individual present in both wave 1 and wave 2
+merged<-left_join(completed_data, completed_data2, by = "AID")%>%
+   mutate( H2ED7 = as.numeric(H2ED7),
+          H2ED8 = as.numeric(H2ED8),
+          H2ED9 = as.numeric(H2ED9),
+          H2ED10 = as.numeric(H2ED10),
+          H1ED11 = as.numeric(H1ED11),
+          H1ED12 = as.numeric(H1ED12),
+          H1ED13 = as.numeric(H1ED13),
+          H1ED14 = as.numeric(H1ED14))%>%
+   mutate(ENG = H1ED11 - H2ED7 +1, MTH = H1ED12 - H2ED8 +1, HST = H1ED13 - H2ED9 +1, SCI = H1ED14 - H2ED10+1)%>%
+  mutate(PERF = ENG + MTH +HST + SCI)
+  
+  
+nrow(merged) # (15942)
+table(merged$PERF)
+
+
+
+perf_drop <- merged %>%
+  select (AID, PERF)%>%
+  mutate(PERF = as.factor(ifelse(perf_drop$PERF<=0,1,0 )))
+         
+table(perf_drop$PERF)
+md.pattern(perf_drop)
+
+wave1_ID <- allwave1 %>%
+  select(AID)
+
+wave1drop_performance <- left_join(wave1_ID, perf_drop, by ="AID")
+md.pattern(wave1drop_performance)
+
+
+```
+
+
+
+
+
+
+```{r}
+
+
+#scaled answers
+learnt_about_suicide <- allwave1%>%
+  select(AID,H1TS17)%>%
+  na_if(6)%>%na_if(8)
+
+#turn into factors
+
+learnt_about_suicide  <- learnt_about_suicide  %>%
+    mutate(H1TS17 = as.factor(H1TS17))
+
+#pattern of missing data
+md.pattern(learnt_about_suicide)
+
+#Cannot impute data no predictors
+
+
+```
+
+
+
+
+
+```{r}
+#scaled attempt
+suicide_sc <- allwave1%>%
+  select(AID, H1SU2)%>%
+  na_if(6)%>%na_if(7)%>%na_if(8)%>%
+  drop_na()
+
+#2743 obs on attempt on suicide
+```
+
+
+
+
+
+
+
+```{r}
+
+#Negativity_feeling
+neg_feeling <- allwave1%>%
+  select(AID, H1FS3, H1FS6, H1FS9, H1FS13,H1FS16, H1FS19)%>%
+  na_if(6)%>%na_if(8)
+
+#missing data 
+md.pattern(neg_feeling)  # 357 missing data in total
+
+#turning into factor
+
+neg_feeling <- neg_feeling %>%
+  mutate(H1FS3 = as.factor(H1FS3),
+         H1FS6 = as.factor(H1FS6),
+         H1FS9 = as.factor(H1FS9),
+         H1FS13 = as.factor(H1FS13),
+         H1FS16 = as.factor(H1FS16),
+         H1FS19 = as.factor(H1FS19))
+#imputing missing data 
+
+tempData_nf <- mice(neg_feeling, m =5, maxit = 5, method = "polr", seed = 500)
+completed_nf <- complete(tempData_nf,1)
+
+#checking
+md.pattern(completed_nf)
+```
+
+```{r}
+#positive_feeling
+
+pos_feeling <- allwave1%>%
+  select(AID, H1FS11, H1FS15)%>%
+  na_if(6)%>%na_if(8)
+
+#missing data
+md.pattern(pos_feeling)
+
+#turn into factor
+pos_feeling <- pos_feeling%>%
+  mutate(H1FS11 = as.factor(H1FS11), 
+         H1FS15 = as.factor(H1FS15))
+#imputing missing data 
+tempData_pf <- mice(pos_feeling, m =5, maxit = 5, method = "polr", seed = 500)
+completed_pf <- complete(tempData_pf,1)
+
+#Checking 
+md.pattern(completed_pf)
+
+```
+```{r}
+logModel0 <- glm(H1SU1~ H1ED16 + H1ED17 + H1ED18 + H1ED19 + H1ED20, family = binomial(link = "logit"), data = training)
+print(summary(logModel0))
+
+anova(logModel0, test = "Chisq") #Sex , H1ED7
+
+print(summary(logModel))
+logModel <- glm(H1SU1~ BIO.SEX + AGE + H1ED5 + H1ED7 + H1ED9, family = binomial(link = "logit"), data = training)
+
+print(summary(logModel))
+
+anova(logModel, test = "Chisq") #Sex , H1ED7
+
+logModel1 <- glm(H1SU1~ H1GH2 + H1GH4 + H1GH6 + H1GH8 + H1GH11 + H1GH18 , family = binomial(link = "logit"), data = training)
+
+print(summary(logModel1))
+
+anova(logModel1, test = "Chisq") # 2, 6, 18
+
+logModel2 <- glm(H1SU1~ BIO.SEX + H1ED7 + H1GH2   + H1GH6 + H1GH18 , family = binomial(link = "logit"), data = training)
+
+anova(logModel2, test = "Chisq")
+
+logModel3 <- glm(H1SU1~ BIO.SEX  + H1GH2 + H1GH6 + H1GH18 + H1ED16, family = binomial(link = "logit"), data = training)
+print(summary(logModel3))
+anova(logModel3, test = "Chisq")
+
+logModel4 <- glm(H1SU1~    shake_blues + depressed + failure + Happy + lonely + enjoy_life + sad + not_worth_living , family = binomial(link = "logit"), data = training)
+print(summary(logModel4))
+anova(logModel4, test = "Chisq") #shake_blues, depressed, failures, not worth living
+
+logModel41 <- glm(H1SU1~    shake_blues + depressed + failure + not_worth_living , family = binomial(link = "logit"), data = training)
+print(summary(logModel41))
+anova(logModel41, test = "Chisq") #shake_blues, depressed, failures, not worth living
+
+
+logModel5 <- glm(H1SU1~    alcohol + cigarette + marijuana + cocaine + inhalant + illegal_drug + PERF, family = binomial(link = "logit"), data = training)
+print(summary(logModel5))
+anova(logModel5, test = "Chisq") #alcohol, cigarette, marijuana, inhalant
+
+logModel6 <- glm(H1SU1~ BIO.SEX  + H1GH2 + H1GH6 + H1GH18 + H1ED16 +alcohol + cigarette + marijuana + inhalant +shake_blues + depressed + failure + not_worth_living, family = binomial(link = "logit"), data = training)
+print(summary(logModel6))
+anova(logModel6, test = "Chisq")
+
+logModel7 <- glm(H1SU1~ BIO.SEX  + H1GH2 + H1GH6 + H1GH18 + H1ED16 +alcohol + inhalant +shake_blues + depressed + failure + not_worth_living, family = binomial(link = "logit"), data = training)
+print(summary(logModel7))
+anova(logModel7, test = "Chisq")
+
+logModel8 <- glm(H1SU1~ BIO.SEX  + H1GH2 + H1GH6 + H1GH18 + H1ED16 +alcohol + inhalant +shake_blues + depressed + failure + not_worth_living + H1SU4.y , family = binomial(link = "logit"), data = training)
+print(summary(logModel8))
+anova(logModel8, test = "Chisq")
+
+logModel9 <- glm(suicidal_thoughts~ . , family = binomial(link = "logit"), data = training)
+print(summary(logModel9))
+anova(logModel8, test = "Chisq")
+
+
+```
+#asessing predictive ability
+```{r}
+fitted.results <- predict(logModel2, newdata = testing, type = 'response')
+fitted.results <- as.matrix(fitted.results)
+fitted.results <- ifelse(fitted.results>0.5, 1,0)
+error <- mean(fitted.results == testing$H1SU1)
+print(paste('Logistic Regression Accuracy', error))
+
+fitted.result1 <- predict(logModel3, newdata = testing, type = 'response')
+fitted.result1 <- as.matrix(fitted.result1)
+fitted.result1 <- ifelse(fitted.result1>0.5, 1,0)
+error1 <- mean(fitted.result1 == testing$H1SU1)
+print(paste('Logistic Regression Accuracy', error1))
+
+fitted.result2 <- predict(logModel7, newdata = testing, type = 'response')
+fitted.result2 <- as.matrix(fitted.result2)
+fitted.result2 <- ifelse(fitted.result2>0.5, 1,0)
+error2 <- mean(fitted.result2 == testing$H1SU1)
+print(paste('Logistic Regression Accuracy', error2))
+
+fitted.result3 <- predict(logModel8, newdata = testing, type = 'response')
+fitted.result3 <- as.matrix(fitted.result3)
+fitted.result3 <- ifelse(fitted.result3>0.5, 1,0)
+error3 <- mean(fitted.result3 == testing$H1SU1, na.rm = TRUE)
+print(paste('Logistic Regression Accuracy', error3))
+```
+
+```{r}
+logModel0 <- glm(suicidal_thoughts~ headache + stomach_ache + physically_weak + tired + wake_up_tired + poor_appetite + trouble_sleeping + moodiness + risk_seatbelt + risk_drunk_drive + miss_school + night_away, family = binomial(link = "logit"), data = training)
+print(summary(logModel0))
+an0<-anova(logModel0, test = "Chisq")
+sum(an0$Deviance, na.rm = TRUE)
+
+logModel1 <- glm(suicidal_thoughts~ repeat_grade + suspension + expelled + pay_attention + homework_done + get_along_with_students + feel_close_to_people + feel_part_of_your_school, family = binomial(link = "logit"), data = training)
+print(summary(logModel1))
+an1<-anova(logModel1, test = "Chisq")
+sum(an1$Deviance, na.rm = TRUE)
+
+logModel2 <- glm(suicidal_thoughts~ suicidal_surrounding + BIO.SEX + AGE + alcohol + cigarette + marijuana + cocaine + inhalant + illegal_drug , family = binomial(link = "logit"), data = training)
+print(summary(logModel2))
+an2 <- anova(logModel2, test = "Chisq")
+sum(an2$Deviance, na.rm = TRUE)
+
+logModel3 <- glm(suicidal_thoughts~ poor_appetite_feel + shake_blues + depressed + failure + Happy + lonely + enjoy_life + sad + not_worth_living , family = binomial(link = "logit"), data = training)
+print(summary(logModel3))
+an3<- anova(logModel3, test = "Chisq")
+sum(an3$Deviance, na.rm = TRUE)
+
+
+logModel4 <- glm(suicidal_thoughts~ suicidal_surrounding + poor_appetite_feel + shake_blues + depressed + failure+ not_worth_living + suicidal_surrounding + BIO.SEX + alcohol + cigarette + marijuana + pay_attention + feel_close_to_people +  headache + stomach_ache + physically_weak +poor_appetite + trouble_sleeping + moodiness+enjoy_life + inhalant , family = binomial(link = "logit"), data = training)
+print(summary(logModel4))
+an4 <- anova(logModel4, test = "Chisq")
+sum(an4$Deviance, na.rm = TRUE)
+
+logModel5 <- glm(suicidal_thoughts~ suicidal_surrounding + poor_appetite_feel + shake_blues + depressed + failure+ not_worth_living + suicidal_surrounding + alcohol , family = binomial(link = "logit"), data = training)
+print(summary(logModel5))
+an5 <- anova(logModel5, test = "Chisq")
+sum(an5$Deviance, na.rm = TRUE)
+
+logModel8 <- glm(suicidal_thoughts~ BIO.SEX  + headache + physically_weak + trouble_sleeping + pay_attention +alcohol + inhalant +shake_blues + depressed + failure + not_worth_living + suicidal_surrounding + poor_appetite_feel , family = binomial(link = "logit"), data = training)
+print(summary(logModel8))
+an<-anova(logModel8, test = "Chisq")
+
+sum(an$Deviance, na.rm = TRUE)
+
+
+```
+
+```{r}
+fitted.results <- predict(logModel5, newdata = testing, type = 'response')
+fitted.results <- as.matrix(fitted.results)
+fitted.results <- ifelse(fitted.results>0.5, 1,0)
+error <- mean(fitted.results == testing$suicidal_thoughts, na.rm = TRUE)
+print(paste('Logistic Regression Accuracy', error))
+
+fitted.results1 <- predict(logModel8, newdata = testing, type = 'response')
+fitted.results1 <- as.matrix(fitted.results1)
+fitted.results1 <- ifelse(fitted.results1>0.5, 1,0)
+error1 <- mean(fitted.results1 == testing$suicidal_thoughts, na.rm = TRUE)
+print(paste('Logistic Regression Accuracy', error1))
+
+fitted.results1 <- predict(logModel4, newdata = testing, type = 'response')
+fitted.results1 <- as.matrix(fitted.results1)
+fitted.results1 <- ifelse(fitted.results1>0.5, 1,0)
+error1 <- mean(fitted.results1 == testing$suicidal_thoughts, na.rm = TRUE)
+print(paste('Logistic Regression Accuracy', error1))
+
+print("Confusion Matrix for Logistic regression");table(testing$suicidal_thoughts, fitted.results1>0.5)
+
+
+True_negative2 <- 5203
+True_Positive2<-  178
+False_negative2<-  641
+False_positive2<-  105
+Actual_true2 <- 819
+Actual_false2 <- 5308
+predicted_true2 <- 283
+Accuracy2 <- round((True_Positive2+True_negative2)/6149, digits = 5)
+print(paste('Overall, the predictions are correct', Accuracy2*100,"% of time" ))
+error_rate2 <- round((False_negative2 + False_positive2)/6149, digits =2)
+print(paste('Overall, the predictions are wrong', error_rate2*100,"% of time" ))
+True_positive_rate2 <- round(True_Positive2/Actual_true2, digits = 2)
+print(paste('When students actually had suicidal thoughts, it predicts them correctly', True_positive_rate2*100,"% of time" ))
+False_positive_rate2 <- round(False_positive2/Actual_false2, digits = 2)
+print(paste('When students did not actually have suicidal thoughts, it predicts  they did', False_positive_rate2*100,"% of time" ))
+True_negative_rate2<- round(True_negative2/Actual_false2, digits = 2)
+print(paste('When students did not actually have suicidal thoughts, it predicts they did not', True_negative_rate2*100,"% of time" ))
+precision2 <- round(True_Positive2/predicted_true2,digits =2)
+print(paste('When the model predicts suicidal thoughts, it is correct', precision2*100,"% of time" ))
+                          
+
+
+```
+
+#Confusion Matrix
+
+```{r}
+
+print("Confusion Matrix for Logistic regression");table(testing$H1SU1, fitted.result2>0.5)
+
+                          
+
+```
+There were 6149 cases. 23 were predicted to have had suicidal thoughts, 6136 were predicted they don't.
+In reality 824 actually had suicidal thoughts and 5325 did not have suicidal thoughts
+#0
+True negative: 5316
+True Positive: 4
+False negative: 820
+False positive: 9
+#2
+True_negative2 <- 5211
+True_Positive2<-  196
+False_negative2<-  628
+False_positive2<-  114
+Actual_true2 <- 824
+Actual_false2 <- 5325
+predicted_true2 <- 310
+Accuracy:
+
+#3
+#tree
+```{r}
+tree <- ctree(H1SU1~ BIO.SEX  + H1GH2 + H1GH6 + H1GH18 + H1ED16, training)
+plot(tree, type = 'simple')
+
+tree1 <- ctree(H1SU1~ BIO.SEX  + H1GH2 + H1GH6 + H1GH18 + H1ED16 +alcohol + inhalant +shake_blues + depressed + failure + not_worth_living, training)
+plot(tree1, type = 'simple')
+
+```
+
+
+SEXUALITY AND STD AND YOUTH
+
+```{r}
+
+#scale_stop yourself and use birth control once aroused
+#plan ahead to have birth control
+#resist sexual intercourse without birth control
+self_efficacy <- allwave1%>%
+  select(AID, H1SE1, H1SE2, H1SE3)
+
+#sex, pregnancy, AIDS/STD test/treatment
+#binary_sexual intercourse?
+#binary_pregnant? 20.000 missing data
+#
+Sex_data <- allwave1 %>%
+  select(AID, H1CO1,H1FP7,H1HS9)
+
+#first time year, 12000 missing
+# binary_birth control, 12 000 missing?,
+first_sex <- allwave1%>%
+  select(AID, H1CO2Y, H1CO3)
+
+#intercourse without consent
+without_consent <- allwave1%>%
+  select(AID, H1CO10)
+
+STD <- allwave1%>%
+  select(AID, 866:875)%>%
+  na_if(7)%>%
+  drop_na()%>%
+  na_if(6)%>%na_if(8)%>%na_if(9)
+
+Knowledge <- allwave1 %>%
+  select(AID, 688:707)%>%
+  na_if(6)%>%na_if(7)%>%na_if(8)%>%na_if(9)%>%drop_na()
+
+```
+
